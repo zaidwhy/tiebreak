@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tiebreak"
+version = "0.1.0"
+description = "A small CPU-first rerank server to run beside Ollama. Speaks the Cohere and Jina /v1/rerank shapes."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+  "onnxruntime>=1.17",
+  "tokenizers>=0.19",
+  "huggingface_hub>=0.23",
+  "numpy>=1.24",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "cohere>=5", "rank_bm25", "ir_datasets"]
+
+[project.scripts]
+tiebreak = "tiebreak.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tiebreak"]
+
+[tool.pytest.ini_options]
+markers = ["model: loads a real ONNX reranker (downloads weights on first run)"]
+pythonpath = ["src"]
+addopts = "-m 'not model'"
