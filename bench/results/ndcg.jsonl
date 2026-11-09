@@ -3,3 +3,4 @@
 {"model": "bge-reranker-base-int8", "onnx_file": "onnx/model_quantized.onnx", "queries": 30, "max_length": 512, "ndcg10_bm25": 0.7409, "ndcg10_reranked": 0.7776, "pairs": 3000, "ms_per_pair": 177.3, "truncated_pairs": 659}
 {"model": "bge-reranker-v2-m3", "onnx_file": "onnx/model_int8.onnx", "queries": 30, "max_length": 512, "ndcg10_bm25": 0.7409, "ndcg10_reranked": 0.8264, "pairs": 3000, "ms_per_pair": 492.16, "truncated_pairs": 659}
 {"model": "minilm", "onnx_file": "onnx/model.onnx", "queries": 30, "max_length": 512, "ndcg10_bm25": 0.7409, "ndcg10_reranked": 0.7211, "pairs": 3000, "ms_per_pair": 46.6, "truncated_pairs": 422}
+{"model": "bge-reranker-base-int8", "onnx_file": "onnx/model_quantized.onnx", "queries": 100, "max_length": 512, "ndcg10_bm25": 0.7303, "ndcg10_reranked": 0.7501, "pairs": 10000, "ms_per_pair": 174.79, "truncated_pairs": 2010}

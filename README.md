@@ -15,6 +15,7 @@ BEIR SciFact, BM25 top-100 candidates, the identical cached pool for every model
 | `bge-reranker-v2-m3` (int8) | 30 | 0.7409 | 0.8264 | +0.085 | 492.2 |
 | `minilm` (fp32) | 100 | 0.7303 | 0.7218 | -0.009 | 55.4 |
 | `minilm-int8` | 100 | 0.7303 | 0.7178 | -0.013 | 40.6 |
+| `bge-reranker-base-int8` (default) | 100 | 0.7303 | 0.7501 | +0.020 | 174.8 |
 
 MiniLM, the usual "fast default" in rerank shims, lowered nDCG@10 on SciFact at both 30 and 100 queries. It was trained on MS MARCO web search; SciFact is scientific claims, where BM25 is already strong, and 13% of the MiniLM pairs were truncated at 512 tokens. That is one dataset, so it does not prove MiniLM hurts everywhere; it is why it is not the default here.
 
@@ -65,6 +66,6 @@ pytest -q -m model   # 4 passed: real scoring, truncation reporting, Cohere SDK 
 
 ## Not done
 
-No GPU provider, no streaming, no batching across concurrent requests. Quality numbers are one dataset (SciFact); the bge rows use 30 queries, not the full 300.
+No GPU provider, no streaming, no batching across concurrent requests. Quality numbers are one dataset (SciFact); bge-reranker-v2-m3 used 30 queries, the rest 100, none the full 300. The default's gain shrank from +0.037 on 30 queries to +0.020 on 100, so read the 30-query rows as rough.
 
 MIT licence.
