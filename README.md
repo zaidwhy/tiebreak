@@ -2,24 +2,31 @@
 
 Ollama serves chat and embeddings but has no rerank endpoint (ollama#3368, open, 290 thumbs-up on 2026-11-10). tiebreak is the missing piece for a local RAG stack: a CPU-only cross-encoder server, ONNX Runtime with no torch, that answers the Cohere and Jina `/v1/rerank` request shapes so existing clients point at it with a base URL change.
 
-The opinion: a reranker that makes ranking worse is worse than none. So the default model is the one that measured better than plain BM25 on a public benchmark, not the smallest one, and every response says which documents were cut to fit the model.
+The opinion: no reranker is "better" in general, and a shim that ships one without showing where it loses is selling a guess. tiebreak ships the fast model as the default, publishes the dataset where that default makes ranking worse, and ships the bench script so the choice is made on your data. Every response also says which documents were cut to fit the model.
 
 ## Measured
 
-BEIR SciFact, BM25 top-100 candidates, the identical cached pool for every model, nDCG@10. One laptop CPU (Windows, onnxruntime CPU provider). Raw rows: `bench/results/ndcg.jsonl`; rerun with `python bench/ndcg.py --model <alias> --queries 30`.
+Two BEIR test sets, BM25 top-100 candidates, the identical cached pool for every model, nDCG@10. One laptop CPU (Windows, onnxruntime CPU provider). Raw rows: `bench/results/ndcg.jsonl`; rerun with `python bench/ndcg.py --model <alias> --queries 100 --dataset scifact|nfcorpus`.
 
-| Model (alias) | Queries | BM25 | Reranked | Change | ms per pair |
-|---|---|---|---|---|---|
-| `minilm` (ms-marco-MiniLM-L-6-v2, fp32) | 30 | 0.7409 | 0.7211 | -0.020 | 46.6 |
-| `bge-reranker-base-int8` (default) | 30 | 0.7409 | 0.7776 | +0.037 | 177.3 |
-| `bge-reranker-v2-m3` (int8) | 30 | 0.7409 | 0.8264 | +0.085 | 492.2 |
-| `minilm` (fp32) | 100 | 0.7303 | 0.7218 | -0.009 | 55.4 |
-| `minilm-int8` | 100 | 0.7303 | 0.7178 | -0.013 | 40.6 |
-| `bge-reranker-base-int8` (default) | 100 | 0.7303 | 0.7501 | +0.020 | 174.8 |
+| Model (alias) | Dataset | Queries | BM25 | Reranked | Change | ms per pair |
+|---|---|---|---|---|---|---|
+| `minilm` (default, ms-marco-MiniLM-L-6-v2 fp32) | SciFact | 100 | 0.7303 | 0.7218 | -0.009 | 55.4 |
+| `minilm-int8` | SciFact | 100 | 0.7303 | 0.7178 | -0.013 | 40.6 |
+| `bge-reranker-base-int8` | SciFact | 100 | 0.7303 | 0.7501 | +0.020 | 174.8 |
+| `minilm` (default) | NFCorpus | 100 | 0.3395 | 0.3871 | +0.048 | 45.2 |
+| `bge-reranker-base-int8` | NFCorpus | 100 | 0.3395 | 0.3431 | +0.004 | 171.9 |
+| `minilm` (default) | SciFact | 30 | 0.7409 | 0.7211 | -0.020 | 46.6 |
+| `bge-reranker-base-int8` | SciFact | 30 | 0.7409 | 0.7776 | +0.037 | 177.3 |
+| `bge-reranker-v2-m3` (int8) | SciFact | 30 | 0.7409 | 0.8264 | +0.085 | 492.2 |
 
-MiniLM, the usual "fast default" in rerank shims, lowered nDCG@10 on SciFact at both 30 and 100 queries. It was trained on MS MARCO web search; SciFact is scientific claims, where BM25 is already strong, and 13% of the MiniLM pairs were truncated at 512 tokens. That is one dataset, so it does not prove MiniLM hurts everywhere; it is why it is not the default here.
+What the table says:
 
-Speed in practice: reranking 20 candidates costs about 3.5 s with the default, about 1 s with `minilm`, about 10 s with `bge-reranker-v2-m3` on this machine. Pick `bge-reranker-v2-m3` when quality matters more than latency, and `minilm` only after checking it on your own data.
+- MiniLM lowered nDCG@10 on SciFact (scientific claims, where BM25 is already strong; 13% of its pairs were cut at 512 tokens) and raised it most of any model run on NFCorpus (medical questions). It is the default because it is 3 to 4 times faster than bge-base and its average gain over the two sets is larger (+0.020 against +0.012).
+- bge-reranker-base int8 never went below BM25 here, but it gained almost nothing on NFCorpus. The int8 file is a community export (Xenova), so part of that may be quantization.
+- bge-reranker-v2-m3 had the largest gain measured, on 30 queries of one dataset only, at about 10 times MiniLM's cost.
+- 30-query rows move a lot: bge-base went from +0.037 on 30 SciFact queries to +0.020 on 100.
+
+Speed in practice: reranking 20 candidates costs about 1 s with `minilm`, about 3.5 s with `bge-reranker-base-int8`, about 10 s with `bge-reranker-v2-m3` on this machine. Before trusting any of them, run `bench/ndcg.py` or your own labelled queries and keep the model only if it beats your first-stage retriever.
 
 `bench/runtime.py` checks the ONNX path against the torch reference for MiniLM: fp32 logits match exactly (max diff 0.0); the int8 file drifts up to 0.74 logits and keeps only 1 in 10 top-10 positions identical, which is why int8 MiniLM is opt-in.
 
@@ -32,7 +39,7 @@ tiebreak serve --model bge-reranker-v2-m3
 tiebreak rerank "what lowers blood pressure" "The Eiffel Tower is in Paris." "ACE inhibitors relax blood vessels."
 ```
 
-A live call against `tiebreak serve` with the default model:
+A live call against `tiebreak serve --model bge-reranker-base-int8`:
 
 ```
 $ curl -s 127.0.0.1:11435/v1/rerank -H 'content-type: application/json' -d '{"query":"what lowers blood pressure","documents":["The Eiffel Tower is in Paris.","ACE inhibitors reduce blood pressure by relaxing blood vessels.","Salt intake raises blood pressure in sensitive people."],"top_n":2,"return_documents":true}'
@@ -66,6 +73,6 @@ pytest -q -m model   # 4 passed: real scoring, truncation reporting, Cohere SDK 
 
 ## Not done
 
-No GPU provider, no streaming, no batching across concurrent requests. Quality numbers are one dataset (SciFact); bge-reranker-v2-m3 used 30 queries, the rest 100, none the full 300. The default's gain shrank from +0.037 on 30 queries to +0.020 on 100, so read the 30-query rows as rough.
+No GPU provider, no streaming, no batching across concurrent requests. Quality numbers cover two small BEIR sets at 100 queries (bge-reranker-v2-m3 at 30), not the full test sets.
 
 MIT licence.

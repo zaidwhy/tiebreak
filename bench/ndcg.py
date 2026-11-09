@@ -1,6 +1,8 @@
-"""nDCG@10 on BEIR SciFact: BM25 top-100, then rerank with a tiebreak engine.
+"""nDCG@10 on a BEIR test set: BM25 top-100, then rerank with a tiebreak engine.
 
-    python bench/ndcg.py --model minilm --queries 100
+    python bench/ndcg.py --model minilm --queries 100 --dataset nfcorpus
+
+Rows without a "dataset" field predate the flag and are SciFact.
 
 The BM25 candidate lists are cached so every model reranks the identical pool.
 """
@@ -30,9 +32,12 @@ def ndcg_at_10(ranked: list[str], rels: dict[str, int]) -> float:
     return dcg / idcg if idcg else 0.0
 
 
-def load_pool(n_queries: int, depth: int = 100):
-    cache = RESULTS / f"scifact_bm25_q{n_queries}_k{depth}.json"
-    ds = ir_datasets.load("beir/scifact/test")
+DATASETS = {"scifact": "beir/scifact/test", "nfcorpus": "beir/nfcorpus/test"}
+
+
+def load_pool(dataset: str, n_queries: int, depth: int = 100):
+    cache = RESULTS / f"{dataset}_bm25_q{n_queries}_k{depth}.json"
+    ds = ir_datasets.load(DATASETS[dataset])
     docs = {d.doc_id: f"{d.title} {d.text}".strip() for d in ds.docs_iter()}
     qrels: dict[str, dict[str, int]] = {}
     for q in ds.qrels_iter():
@@ -58,9 +63,10 @@ def main() -> None:
     ap.add_argument("--onnx-file")
     ap.add_argument("--queries", type=int, default=100)
     ap.add_argument("--max-length", type=int, default=512)
+    ap.add_argument("--dataset", choices=sorted(DATASETS), default="scifact")
     args = ap.parse_args()
 
-    docs, qrels, queries, pool = load_pool(args.queries)
+    docs, qrels, queries, pool = load_pool(args.dataset, args.queries)
     bm25_scores = [ndcg_at_10(pool[qid], qrels[qid]) for qid, _ in queries]
     engine = Reranker(args.model, args.onnx_file, max_length=args.max_length)
     reranked, pairs, cut, spent = [], 0, 0, 0.0
@@ -74,7 +80,7 @@ def main() -> None:
         order = sorted(range(len(cands)), key=lambda i: -scored.scores[i])
         reranked.append(ndcg_at_10([cands[i] for i in order], qrels[qid]))
     row = {
-        "model": args.model, "onnx_file": engine.onnx_file, "queries": len(queries), "max_length": args.max_length,
+        "dataset": args.dataset, "model": args.model, "onnx_file": engine.onnx_file, "queries": len(queries), "max_length": args.max_length,
         "ndcg10_bm25": round(sum(bm25_scores) / len(queries), 4),
         "ndcg10_reranked": round(sum(reranked) / len(queries), 4),
         "pairs": pairs, "ms_per_pair": round(1000 * spent / pairs, 2), "truncated_pairs": cut,

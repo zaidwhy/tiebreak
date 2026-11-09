@@ -5,8 +5,8 @@ State: 2 commits on main, local only. 18 offline + 4 model tests pass. Live curl
 Next: Zaid creates the private remote (the auto-mode classifier blocks Claude from `gh repo create`):
 `cd "C:/Users/Asus/projects/tiebreak" && gh repo create zaidwhy/tiebreak --private --source=. --remote=origin --push`
 
-Done 2026-11-10: bge-reranker-base-int8 on 100 queries scored 0.7501 against BM25 0.7303 (+0.020). Open work: a second dataset (NFCorpus or FiQA) would show whether MiniLM's loss is SciFact-specific.
+Done 2026-11-10: bge-reranker-base-int8 on 100 queries scored 0.7501 against BM25 0.7303 (+0.020). NFCorpus done: MiniLM's SciFact loss is dataset-specific. Open work: a third dataset (FiQA) and bge-base fp32.
 
 ## Overnight decisions (review)
-- Default model changed from `minilm` to `bge-reranker-base-int8`. Reason: MiniLM lowered nDCG@10 on SciFact (0.7409 to 0.7211 on 30 queries, 0.7303 to 0.7218 on 100); bge-base int8 raised it to 0.7776 at about 3.8x the cost per pair. bge-reranker-v2-m3 (0.8264) is 10x slower than MiniLM, too slow for a CPU default. Revert with `TIEBREAK_MODEL=minilm` or by changing `settings.py`.
+- Default stays `minilm` (briefly switched to `bge-reranker-base-int8`, then reverted the same night). Reason: on SciFact MiniLM lost to BM25 (-0.009) and bge-base won (+0.020), but on NFCorpus MiniLM gained +0.048 and bge-base +0.004. MiniLM has the larger mean gain and is 3 to 4 times faster. The README states where the default loses. Revisit with a third dataset or bge-reranker-base fp32 (int8 is a community export).
 - sameness.py flags 67% entry overlap with bhashantar; the shared entries are `src`, `tests`, `bench`, `.pytest_cache` (standard Python layout), headings 0%. Left as is.

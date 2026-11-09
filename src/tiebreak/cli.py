@@ -13,7 +13,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("serve", help="start the HTTP server")
-    s.add_argument("--model", help="alias, Hugging Face repo id, or local directory (default: $TIEBREAK_MODEL or bge-reranker-base-int8)")
+    s.add_argument("--model", help="alias, Hugging Face repo id, or local directory (default: $TIEBREAK_MODEL or minilm)")
     s.add_argument("--onnx-file", help="path of the .onnx file inside the repo")
     s.add_argument("--host")
     s.add_argument("--port", type=int)
