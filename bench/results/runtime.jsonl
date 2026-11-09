@@ -1,0 +1,1 @@
+{"hf": "cross-encoder/ms-marco-MiniLM-L-6-v2", "rows": [{"runtime": "torch-fp32", "ms_per_pair": 50.77}, {"runtime": "ort-minilm", "ms_per_pair": 43.03, "max_abs_logit_diff_vs_torch": 0.0, "top10_same_position": 1.0}, {"runtime": "ort-minilm-int8", "ms_per_pair": 33.2, "max_abs_logit_diff_vs_torch": 0.7398, "top10_same_position": 0.1}]}

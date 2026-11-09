@@ -22,7 +22,7 @@ def _int(name: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Settings:
-    model: str = "minilm"
+    model: str = "bge-reranker-base-int8"
     onnx_file: str | None = None
     host: str = "127.0.0.1"
     port: int = 11435

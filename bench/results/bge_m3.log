@@ -1,0 +1,34 @@
+[INFO] Opening C:\Users\Asus\.ir_datasets\beir\scifact/docs.pklz4\bin with direct file access
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 3 files:  33%|███▎      | 1/3 [00:00<00:00,  3.58it/s]Fetching 3 files:  67%|██████▋   | 2/3 [00:03<00:01,  1.94s/it]Fetching 3 files: 100%|██████████| 3/3 [01:00<00:00, 27.36s/it]Fetching 3 files: 100%|██████████| 3/3 [01:00<00:00, 20.33s/it]
+truncated 10 document(s) to 512 tokens
+truncated 24 document(s) to 512 tokens
+truncated 26 document(s) to 512 tokens
+truncated 40 document(s) to 512 tokens
+truncated 28 document(s) to 512 tokens
+truncated 36 document(s) to 512 tokens
+truncated 29 document(s) to 512 tokens
+truncated 17 document(s) to 512 tokens
+truncated 17 document(s) to 512 tokens
+truncated 22 document(s) to 512 tokens
+truncated 21 document(s) to 512 tokens
+truncated 18 document(s) to 512 tokens
+truncated 26 document(s) to 512 tokens
+truncated 26 document(s) to 512 tokens
+truncated 15 document(s) to 512 tokens
+truncated 17 document(s) to 512 tokens
+truncated 20 document(s) to 512 tokens
+truncated 15 document(s) to 512 tokens
+truncated 14 document(s) to 512 tokens
+truncated 9 document(s) to 512 tokens
+truncated 37 document(s) to 512 tokens
+truncated 9 document(s) to 512 tokens
+truncated 19 document(s) to 512 tokens
+truncated 21 document(s) to 512 tokens
+truncated 16 document(s) to 512 tokens
+truncated 28 document(s) to 512 tokens
+truncated 30 document(s) to 512 tokens
+truncated 26 document(s) to 512 tokens
+truncated 18 document(s) to 512 tokens
+truncated 25 document(s) to 512 tokens
+{"model": "bge-reranker-v2-m3", "onnx_file": "onnx/model_int8.onnx", "queries": 30, "max_length": 512, "ndcg10_bm25": 0.7409, "ndcg10_reranked": 0.8264, "pairs": 3000, "ms_per_pair": 492.16, "truncated_pairs": 659}
