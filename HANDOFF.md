@@ -13,3 +13,5 @@ Done 2026-11-10: bge-reranker-base-int8 on 100 queries scored 0.7501 against BM2
 Published to PyPI 2026-11-10 as tiebreak-rerank 0.1.0 (command and import stay tiebreak).
 
 Published 2026-11-10: tiebreak-rerank 0.1.1 on PyPI (adds `[project.urls]`, nothing else); wheel and sdist listed on the simple index, tag `v0.1.1` on the bump commit.
+
+CI added 2026-11-10: `.github/workflows/tests.yml` runs `pytest -q` (default marker set, no model download) on Ubuntu and Windows, Python 3.10 and 3.12; first run 4 of 4 green, 18 passed each. Repo homepage set to the PyPI page. No GitHub release objects yet (tags only).
