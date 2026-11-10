@@ -12,4 +12,4 @@ Done 2026-11-10: bge-reranker-base-int8 on 100 queries scored 0.7501 against BM2
 
 Published to PyPI 2026-11-10 as tiebreak-rerank 0.1.0 (command and import stay tiebreak).
 
-Unreleased on main: `[project.urls]` in pyproject.toml; the PyPI page shows no source link until 0.1.1 is built and uploaded.
+Ready to upload: 0.1.1 (adds `[project.urls]`, nothing else). Built with `python -m build`, `twine check` passed, tag `v0.1.1` is on the bump commit. Zaid runs `uvx twine upload dist/tiebreak_rerank-0.1.1*` in his own terminal; PyPI serves 0.1.0 until then.
