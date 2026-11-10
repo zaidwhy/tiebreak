@@ -6,7 +6,7 @@ The opinion: no reranker is "better" in general, and a shim that ships one witho
 
 ## Measured
 
-Two BEIR test sets, BM25 top-100 candidates, the identical cached pool for every model, nDCG@10. One laptop CPU (Windows, onnxruntime CPU provider). Raw rows: `bench/results/ndcg.jsonl`; rerun with `python bench/ndcg.py --model <alias> --queries 100 --dataset scifact|nfcorpus`.
+Three BEIR test sets, BM25 top-100 candidates, the identical cached pool for every model, nDCG@10. One laptop CPU (Windows, onnxruntime CPU provider). Raw rows: `bench/results/ndcg.jsonl`; rerun with `python bench/ndcg.py --model <alias> --queries 100 --dataset scifact|nfcorpus|fiqa`.
 
 | Model (alias) | Dataset | Queries | BM25 | Reranked | Change | ms per pair |
 |---|---|---|---|---|---|---|
@@ -15,14 +15,17 @@ Two BEIR test sets, BM25 top-100 candidates, the identical cached pool for every
 | `bge-reranker-base-int8` | SciFact | 100 | 0.7303 | 0.7501 | +0.020 | 174.8 |
 | `minilm` (default) | NFCorpus | 100 | 0.3395 | 0.3871 | +0.048 | 45.2 |
 | `bge-reranker-base-int8` | NFCorpus | 100 | 0.3395 | 0.3431 | +0.004 | 171.9 |
+| `bge-reranker-base` fp32 (Xenova `onnx/model.onnx`) | NFCorpus | 100 | 0.3395 | 0.3430 | +0.004 | 210.0 |
+| `minilm` (default) | FiQA | 100 | 0.2074 | 0.3164 | +0.109 | 33.4 |
+| `bge-reranker-base-int8` | FiQA | 100 | 0.2074 | 0.3053 | +0.098 | 110.0 |
 | `minilm` (default) | SciFact | 30 | 0.7409 | 0.7211 | -0.020 | 46.6 |
 | `bge-reranker-base-int8` | SciFact | 30 | 0.7409 | 0.7776 | +0.037 | 177.3 |
 | `bge-reranker-v2-m3` (int8) | SciFact | 30 | 0.7409 | 0.8264 | +0.085 | 492.2 |
 
 What the table says:
 
-- MiniLM lowered nDCG@10 on SciFact (scientific claims, where BM25 is already strong; 13% of its pairs were cut at 512 tokens) and raised it most of any model run on NFCorpus (medical questions). It is the default because it is 3 to 4 times faster than bge-base and its average gain over the two sets is larger (+0.020 against +0.012).
-- bge-reranker-base int8 never went below BM25 here, but it gained almost nothing on NFCorpus. The int8 file is a community export (Xenova), so part of that may be quantization.
+- MiniLM lowered nDCG@10 on SciFact (scientific claims, where BM25 is already strong; 13% of its pairs were cut at 512 tokens) and raised it most of any model run on NFCorpus (medical questions) and FiQA (finance questions). It is the default because it is 3 to 4 times faster than bge-base and its average gain over the three sets is larger (+0.049 against +0.041).
+- bge-reranker-base never went below BM25 here, but it gained almost nothing on NFCorpus, and that is the model, not quantization: the fp32 file scores 0.3430 against int8's 0.3431.
 - bge-reranker-v2-m3 had the largest gain measured, on 30 queries of one dataset only, at about 10 times MiniLM's cost.
 - 30-query rows move a lot: bge-base went from +0.037 on 30 SciFact queries to +0.020 on 100.
 
@@ -73,6 +76,6 @@ pytest -q -m model   # 4 passed: real scoring, truncation reporting, Cohere SDK 
 
 ## Not done
 
-No GPU provider, no streaming, no batching across concurrent requests. Quality numbers cover two small BEIR sets at 100 queries (bge-reranker-v2-m3 at 30), not the full test sets.
+No GPU provider, no streaming, no batching across concurrent requests. Quality numbers cover three small BEIR sets at 100 queries (bge-reranker-v2-m3 at 30), not the full test sets.
 
 MIT licence.

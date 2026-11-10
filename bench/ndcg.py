@@ -32,13 +32,13 @@ def ndcg_at_10(ranked: list[str], rels: dict[str, int]) -> float:
     return dcg / idcg if idcg else 0.0
 
 
-DATASETS = {"scifact": "beir/scifact/test", "nfcorpus": "beir/nfcorpus/test"}
+DATASETS = {"scifact": "beir/scifact/test", "nfcorpus": "beir/nfcorpus/test", "fiqa": "beir/fiqa/test"}
 
 
 def load_pool(dataset: str, n_queries: int, depth: int = 100):
     cache = RESULTS / f"{dataset}_bm25_q{n_queries}_k{depth}.json"
     ds = ir_datasets.load(DATASETS[dataset])
-    docs = {d.doc_id: f"{d.title} {d.text}".strip() for d in ds.docs_iter()}
+    docs = {d.doc_id: f"{getattr(d, 'title', '')} {d.text}".strip() for d in ds.docs_iter()}  # FiQA docs have no title
     qrels: dict[str, dict[str, int]] = {}
     for q in ds.qrels_iter():
         qrels.setdefault(q.query_id, {})[q.doc_id] = q.relevance
