@@ -1,9 +1,8 @@
 # tiebreak handoff (2026-11-10)
 
-State: 2 commits on main, local only. 18 offline + 4 model tests pass. Live curl verified on /v1/rerank and /api/rerank.
+State: main pushed to private zaidwhy/tiebreak. 18 offline + 4 model tests pass. Live curl verified on /v1/rerank and /api/rerank.
 
-Next: Zaid creates the private remote (the auto-mode classifier blocks Claude from `gh repo create`):
-`cd "C:/Users/Asus/projects/tiebreak" && gh repo create zaidwhy/tiebreak --private --source=. --remote=origin --push`
+Remote created by Zaid on 2026-11-10.
 
 Done 2026-11-10: bge-reranker-base-int8 on 100 queries scored 0.7501 against BM25 0.7303 (+0.020). NFCorpus done: MiniLM's SciFact loss is dataset-specific. Open work: a third dataset (FiQA) and bge-base fp32.
 
