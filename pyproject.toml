@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tiebreak"
+name = "tiebreak-rerank"
 version = "0.1.0"
 description = "A small CPU-first rerank server to run beside Ollama. Speaks the Cohere and Jina /v1/rerank shapes."
 readme = "README.md"

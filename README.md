@@ -36,7 +36,7 @@ Speed in practice: reranking 20 candidates costs about 1 s with `minilm`, about 
 ## Run
 
 ```
-pip install -e .
+pip install tiebreak-rerank        # the PyPI name; the command and import are `tiebreak`
 tiebreak serve                      # 127.0.0.1:11435, downloads the default model once
 tiebreak serve --model bge-reranker-v2-m3
 tiebreak rerank "what lowers blood pressure" "The Eiffel Tower is in Paris." "ACE inhibitors relax blood vessels."
