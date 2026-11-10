@@ -18,6 +18,10 @@ dependencies = [
   "uvicorn>=0.29",
 ]
 
+[project.urls]
+Repository = "https://github.com/zaidwhy/tiebreak"
+Issues = "https://github.com/zaidwhy/tiebreak/issues"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27", "cohere>=5", "rank_bm25", "ir_datasets"]
 

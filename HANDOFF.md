@@ -1,6 +1,6 @@
 # tiebreak handoff (2026-11-10)
 
-State: main pushed to private zaidwhy/tiebreak. 18 offline + 4 model tests pass. Live curl verified on /v1/rerank and /api/rerank.
+State: main pushed to zaidwhy/tiebreak (public since 2026-11-10), tag `v0.1.0` at 666f4b9. 18 offline + 4 model tests pass. Live curl verified on /v1/rerank and /api/rerank.
 
 Remote created by Zaid on 2026-11-10.
 
@@ -11,3 +11,5 @@ Done 2026-11-10: bge-reranker-base-int8 on 100 queries scored 0.7501 against BM2
 - sameness.py flags 67% entry overlap with bhashantar; the shared entries are `src`, `tests`, `bench`, `.pytest_cache` (standard Python layout), headings 0%. Left as is.
 
 Published to PyPI 2026-11-10 as tiebreak-rerank 0.1.0 (command and import stay tiebreak).
+
+Unreleased on main: `[project.urls]` in pyproject.toml; the PyPI page shows no source link until 0.1.1 is built and uploaded.
