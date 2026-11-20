@@ -1,6 +1,7 @@
 """nDCG@10 on a BEIR test set: BM25 top-100, then rerank with a tiebreak engine.
 
     python bench/ndcg.py --model minilm --queries 100 --dataset nfcorpus
+    python bench/ndcg.py --model qllama/bge-reranker-v2-m3 --queries 30   # a GGUF Ollama has pulled
 
 Rows without a "dataset" field predate the flag and are SciFact.
 
@@ -18,7 +19,10 @@ from pathlib import Path
 import ir_datasets
 from rank_bm25 import BM25Okapi
 
+from tiebreak import ollama
 from tiebreak.engine import Reranker
+from tiebreak.llama_server import LlamaServerReranker
+from tiebreak.router import is_onnx_name
 
 HERE = Path(__file__).parent
 RESULTS = HERE / "results"
@@ -68,7 +72,11 @@ def main() -> None:
 
     docs, qrels, queries, pool = load_pool(args.dataset, args.queries)
     bm25_scores = [ndcg_at_10(pool[qid], qrels[qid]) for qid, _ in queries]
-    engine = Reranker(args.model, args.onnx_file, max_length=args.max_length)
+    gguf = not is_onnx_name(args.model) and ollama.is_pulled(args.model)
+    if gguf:
+        engine = LlamaServerReranker(args.model, ollama.resolve_blob(args.model), max_length=args.max_length)
+    else:
+        engine = Reranker(args.model, args.onnx_file, max_length=args.max_length)
     reranked, pairs, cut, spent = [], 0, 0, 0.0
     for qid, text in queries:
         cands = pool[qid]
@@ -80,11 +88,14 @@ def main() -> None:
         order = sorted(range(len(cands)), key=lambda i: -scored.scores[i])
         reranked.append(ndcg_at_10([cands[i] for i in order], qrels[qid]))
     row = {
-        "dataset": args.dataset, "model": args.model, "onnx_file": engine.onnx_file, "queries": len(queries), "max_length": args.max_length,
+        "dataset": args.dataset, "model": args.model,
+        **({"backend": "gguf", "blob": engine.blob.name} if gguf else {"onnx_file": engine.onnx_file}), "queries": len(queries), "max_length": args.max_length,
         "ndcg10_bm25": round(sum(bm25_scores) / len(queries), 4),
         "ndcg10_reranked": round(sum(reranked) / len(queries), 4),
         "pairs": pairs, "ms_per_pair": round(1000 * spent / pairs, 2), "truncated_pairs": cut,
     }
+    if gguf:
+        engine.close()
     print(json.dumps(row))
     with open(RESULTS / "ndcg.jsonl", "a") as fh:
         fh.write(json.dumps(row) + "\n")

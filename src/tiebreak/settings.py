@@ -34,6 +34,9 @@ class Settings:
     batch_size: int = 16
     request_timeout_s: int = 30
     scores: str = "sigmoid"  # "sigmoid" (0..1, Cohere-like) or "raw" (model logits)
+    ollama_url: str | None = None  # set by --ollama: proxy everything else to this Ollama
+    proxy_timeout_s: int = 300  # longest gap between two chunks of a proxied response
+    llama_start_timeout_s: int = 120  # llama-server must load a GGUF within this
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -53,6 +56,8 @@ class Settings:
             batch_size=_int("TIEBREAK_BATCH_SIZE", cls.batch_size),
             request_timeout_s=_int("TIEBREAK_TIMEOUT_S", cls.request_timeout_s),
             scores=scores,
+            proxy_timeout_s=_int("TIEBREAK_PROXY_TIMEOUT_S", cls.proxy_timeout_s),
+            llama_start_timeout_s=_int("TIEBREAK_LLAMA_START_TIMEOUT_S", cls.llama_start_timeout_s),
         )
 
     def with_overrides(self, **kw) -> "Settings":

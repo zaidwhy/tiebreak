@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 import pytest
@@ -56,12 +57,12 @@ class LiveServer:
     url: str
 
 
-@pytest.fixture
-def live_server():
+@contextmanager
+def run_server(app):
+    """Serve an ASGI app on a free loopback port in a thread; yields its base URL."""
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
-    app = create_app(Settings(), WordOverlapEngine())
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
@@ -69,6 +70,14 @@ def live_server():
     while not server.started and time.monotonic() < deadline:
         thread.join(0.05)
     assert server.started, "uvicorn did not start"
-    yield LiveServer(f"http://127.0.0.1:{port}")
-    server.should_exit = True
-    thread.join(timeout=5)
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+
+
+@pytest.fixture
+def live_server():
+    with run_server(create_app(Settings(), WordOverlapEngine())) as url:
+        yield LiveServer(url)

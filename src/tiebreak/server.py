@@ -6,12 +6,16 @@ import logging
 import threading
 import time
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from tiebreak import __version__
 from tiebreak.engine import DeadlineExceeded, LimitError, to_relevance
+from tiebreak.gguf import GgufError, NotAReranker
+from tiebreak.llama_server import LlamaServerError
+from tiebreak.router import EngineRouter, UnknownModel
 from tiebreak.settings import Settings
 
 log = logging.getLogger("tiebreak.server")
@@ -54,8 +58,27 @@ def parse_documents(raw, cfg: Settings) -> list[str]:
     return texts
 
 
-def create_app(cfg: Settings, engine) -> FastAPI:
-    app = FastAPI(title="tiebreak", version=__version__, docs_url=None, redoc_url=None)
+def create_app(cfg: Settings, engine=None, router: EngineRouter | None = None) -> FastAPI:
+    """One engine for every request, or (in --ollama mode) a router that picks one per `model` field,
+    with every path tiebreak does not own forwarded to cfg.ollama_url."""
+    if (engine is None) == (router is None):
+        raise ValueError("pass exactly one of engine or router")
+    proxying = cfg.ollama_url is not None
+    lifespan = None
+    if proxying:
+        from tiebreak.proxy import make_client
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            app.state.upstream = make_client(cfg.proxy_timeout_s)
+            try:
+                yield
+            finally:
+                await app.state.upstream.aclose()
+                if router is not None:
+                    router.close_gguf()
+
+    app = FastAPI(title="tiebreak", version=__version__, docs_url=None, redoc_url=None, lifespan=lifespan)
     gate = threading.Lock()  # one scoring pass at a time: ORT already uses every core
     body_cap = cfg.max_documents * cfg.max_chars_per_document
 
@@ -67,13 +90,17 @@ def create_app(cfg: Settings, engine) -> FastAPI:
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "model": engine.model_id, "version": __version__}
+        if router is None:
+            return {"status": "ok", "model": engine.model_id, "version": __version__}
+        return {"status": "ok", "version": __version__, "mode": "ollama", "upstream": cfg.ollama_url,
+                "default_model": router.default_model, "loaded": router.loaded()}
 
-    @app.get("/v1/models")
-    def models(request: Request):
-        if unauthorized(request):
-            return _error(401, "missing or wrong bearer token")
-        return {"object": "list", "data": [{"id": engine.model_id, "object": "model", "owned_by": "tiebreak"}]}
+    if not proxying:  # with --ollama, /v1/models belongs to Ollama and is forwarded
+        @app.get("/v1/models")
+        def models(request: Request):
+            if unauthorized(request):
+                return _error(401, "missing or wrong bearer token")
+            return {"object": "list", "data": [{"id": engine.model_id, "object": "model", "owned_by": "tiebreak"}]}
 
     def rerank(request: Request, payload: dict):
         started = time.monotonic()
@@ -95,9 +122,13 @@ def create_app(cfg: Settings, engine) -> FastAPI:
         scale = payload.get("score_scale", cfg.scores)
         if scale not in ("sigmoid", "raw"):
             raise BadRequest("score_scale", "score_scale must be 'sigmoid' or 'raw'")
+        requested = payload.get("model")
+        if requested is not None and not isinstance(requested, str):
+            raise BadRequest("model", "model must be a string")
 
         with gate:
-            scored = engine.score(query, docs, max_total_tokens=cfg.max_total_tokens,
+            chosen = engine if router is None else router.get(requested)
+            scored = chosen.score(query, docs, max_total_tokens=cfg.max_total_tokens,
                                   deadline=started + cfg.request_timeout_s)
         relevance = to_relevance(scored.scores, scale)
         order = sorted(range(len(docs)), key=lambda i: (-relevance[i], i))[:top_n]
@@ -108,7 +139,7 @@ def create_app(cfg: Settings, engine) -> FastAPI:
                 row["document"] = {"text": docs[i]}
             results.append(row)
         warnings = [
-            f"documents[{i}] exceeds {engine.max_length} tokens and was truncated; "
+            f"documents[{i}] exceeds {chosen.max_length} tokens and was truncated; "
             "its score reflects only the first part of the text"
             for i in scored.truncated
         ]
@@ -119,7 +150,7 @@ def create_app(cfg: Settings, engine) -> FastAPI:
                  (time.monotonic() - started) * 1000)
         return {
             "id": str(uuid.uuid4()),
-            "model": engine.model_id,
+            "model": chosen.model_id,
             "results": results,
             "usage": {"total_tokens": scored.tokens, "prompt_tokens": scored.tokens},
             "meta": meta,
@@ -142,9 +173,28 @@ def create_app(cfg: Settings, engine) -> FastAPI:
         except DeadlineExceeded:
             return _error(504, f"scoring exceeded TIEBREAK_TIMEOUT_S={cfg.request_timeout_s}", "timeout",
                           cfg.request_timeout_s)
+        except UnknownModel as exc:
+            return _error(404, str(exc), "model")
+        except (NotAReranker, GgufError) as exc:
+            return _error(400, str(exc), "model")
+        except LlamaServerError as exc:
+            log.error("llama-server failed: %s", exc)
+            return _error(502, f"GGUF backend failed: {exc}", "model")
 
     for path in RERANK_PATHS:
         app.add_api_route(path, handler, methods=["POST"])
+
+    if proxying:
+        from tiebreak.proxy import forward
+
+        async def passthrough(request: Request):
+            if unauthorized(request):
+                return _error(401, "missing or wrong bearer token")
+            return await forward(request, request.app.state.upstream, cfg.ollama_url, strip_auth=bool(cfg.api_key))
+
+        # Added last so the owned routes above match first; any method, any path.
+        app.add_api_route("/{path:path}", passthrough,
+                          methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     @app.exception_handler(422)
     async def _invalid(request: Request, exc):
